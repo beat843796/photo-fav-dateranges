@@ -27,12 +27,13 @@ python3 -m http.server
 4) Open the calendar in your browser
 
 ```
-http://localhost:8000/favorites_calendar.html
+http://localhost:8000/index.html
 ```
 
 ## Notes
 
 - The script reads from `db_copy/Photos.sqlite` by default.
+- `index.html` fetches `fav_dates.csv`, so it needs a local HTTP server (file:// will block it).
 - To include videos, run:
 
 ```
