@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Favorites Heatmap</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap");
+
+      :root {
+        --bg: #0f1115;
+        --ink: #bdbdbd;
+        --muted: #707070;
+        --panel: #171a21;
+        --panel-edge: #242836;
+        --cell: #2a2f3a;
+        --cell-empty: #1b1f28;
+        --accent: #6fd14a;
+        --cell-size: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Lato", "Helvetica Neue", sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 20px 18px 56px;
+        display: grid;
+        gap: 20px;
+        align-items: start;
+        justify-items: center;
+      }
+
+      .year {
+        display: grid;
+        gap: 10px;
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        padding: 12px 12px 14px;
+        width: max-content;
+      }
+
+      .year + .year {
+        margin-top: 24px;
+      }
+
+      .year-title {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .year-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .year-count {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .months {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        width: max-content;
+      }
+
+      .month {
+        display: grid;
+        gap: 12px;
+      }
+
+      .month-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .month-grid {
+        display: grid;
+        grid-template-columns: repeat(7, var(--cell-size));
+        grid-auto-rows: var(--cell-size);
+        gap: 2px;
+      }
+
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        position: relative;
+        background: var(--cell);
+      }
+
+      .cell.empty {
+        background: var(--cell-empty);
+      }
+
+      .cell.fav {
+        background: var(--accent);
+      }
+
+      .status {
+        color: var(--muted);
+        font-size: 11px;
+        padding-top: 4px;
+      }
+
+      @media (max-width: 900px) {
+        .months {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          width: 100%;
+        }
+
+        .year {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .months {
+          grid-template-columns: 1fr;
+          width: 100%;
+        }
+
+        .year {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="status" class="status">Loading…</div>
+      <div id="calendar"></div>
+    </main>
+
+    <script>
+      const MONTH_NAMES = [
+        "Januar",
+        "Februar",
+        "März",
+        "April",
+        "Mai",
+        "Juni",
+        "Juli",
+        "August",
+        "September",
+        "Oktober",
+        "November",
+        "Dezember",
+      ];
+
+      const formatter = new Intl.DateTimeFormat("de-AT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+
+      function parseCsvDates(text) {
+        return text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => line.replace(/^"|"$/g, ""))
+          .map((iso) => new Date(iso))
+          .filter((date) => !Number.isNaN(date.getTime()));
+      }
+
+      function toDateKeyUTC(date) {
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(date.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function buildMonth(year, month, dateSet) {
+        const monthEl = document.createElement("section");
+        monthEl.className = "month";
+
+        const name = document.createElement("div");
+        name.className = "month-name";
+        name.textContent = MONTH_NAMES[month];
+
+        const grid = document.createElement("div");
+        grid.className = "month-grid";
+
+        const first = new Date(Date.UTC(year, month, 1));
+        const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const offset = (first.getUTCDay() + 6) % 7;
+        const totalCells = 42;
+
+        for (let i = 0; i < totalCells; i += 1) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+
+          const dayNumber = i - offset + 1;
+          if (dayNumber < 1 || dayNumber > daysInMonth) {
+            cell.classList.add("empty");
+            grid.appendChild(cell);
+            continue;
+          }
+
+          const cellDate = new Date(Date.UTC(year, month, dayNumber));
+          const key = toDateKeyUTC(cellDate);
+          if (dateSet.has(key)) {
+            cell.classList.add("fav");
+          }
+          cell.title = formatter.format(cellDate);
+          grid.appendChild(cell);
+        }
+
+        monthEl.append(name, grid);
+        return monthEl;
+      }
+
+      function buildCalendar(dates) {
+        const status = document.getElementById("status");
+        const calendar = document.getElementById("calendar");
+        calendar.innerHTML = "";
+
+        if (!dates.length) {
+          status.textContent = "No favorites found.";
+          return;
+        }
+
+        dates.sort((a, b) => a.getTime() - b.getTime());
+        const startYear = dates[0].getUTCFullYear();
+        const endYear = dates[dates.length - 1].getUTCFullYear();
+        const dateSet = new Set(dates.map(toDateKeyUTC));
+        const yearCounts = new Map();
+
+        dates.forEach((date) => {
+          const year = date.getUTCFullYear();
+          yearCounts.set(year, (yearCounts.get(year) || 0) + 1);
+        });
+
+        const fragment = document.createDocumentFragment();
+
+        for (let year = startYear; year <= endYear; year += 1) {
+          const yearEl = document.createElement("section");
+          yearEl.className = "year";
+
+          const header = document.createElement("div");
+          header.className = "year-header";
+
+          const title = document.createElement("div");
+          title.className = "year-title";
+          title.textContent = year;
+
+          const count = document.createElement("div");
+          count.className = "year-count";
+          count.textContent = `${yearCounts.get(year) || 0} images`;
+
+          const months = document.createElement("div");
+          months.className = "months";
+
+          for (let month = 0; month < 12; month += 1) {
+            if (year === startYear && month < dates[0].getUTCMonth()) {
+              continue;
+            }
+            if (year === endYear && month > dates[dates.length - 1].getUTCMonth()) {
+              continue;
+            }
+            months.appendChild(buildMonth(year, month, dateSet));
+          }
+
+          header.append(title);
+          header.append(count);
+          yearEl.append(header, months);
+          fragment.appendChild(yearEl);
+        }
+
+        calendar.appendChild(fragment);
+        status.textContent = `${dates.length} favorites`;
+      }
+
+      fetch("fav_dates.csv")
+        .then((resp) => resp.text())
+        .then((text) => buildCalendar(parseCsvDates(text)))
+        .catch(() => {
+          const status = document.getElementById("status");
+          status.textContent = "Could not load fav_dates.csv.";
+        });
+    </script>
+  </body>
+</html>
