@@ -16,6 +16,8 @@
         --cell: #2a2f3a;
         --cell-empty: #1b1f28;
         --accent: #6fd14a;
+        --cell-hover: #505b74;
+        --cell-hover-fav: #285b18;
         --cell-size: 24px;
       }
 
@@ -104,6 +106,14 @@
         background: var(--cell);
       }
 
+      .cell.hovered {
+        background: var(--cell-hover);
+      }
+
+      .cell.fav.hovered {
+        background: var(--cell-hover-fav);
+      }
+
       .cell.empty {
         background: var(--cell-empty);
       }
@@ -116,6 +126,25 @@
         color: var(--muted);
         font-size: 11px;
         padding-top: 4px;
+      }
+
+      .tooltip {
+        position: fixed;
+        z-index: 20;
+        padding: 14px 20px;
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--panel-edge);
+        pointer-events: none;
+        opacity: 0;
+        transform: translate(-50%, -160%);
+        
+        white-space: nowrap;
+      }
+
+      .tooltip.visible {
+        opacity: 1;
       }
 
       @media (max-width: 900px) {
@@ -146,6 +175,7 @@
       <div id="status" class="status">Loading…</div>
       <div id="calendar"></div>
     </main>
+    <div id="tooltip" class="tooltip" role="tooltip"></div>
 
     <script>
       const MONTH_NAMES = [
@@ -218,7 +248,7 @@
           if (dateSet.has(key)) {
             cell.classList.add("fav");
           }
-          cell.title = formatter.format(cellDate);
+          cell.dataset.date = formatter.format(cellDate);
           grid.appendChild(cell);
         }
 
@@ -285,6 +315,43 @@
 
         calendar.appendChild(fragment);
         status.textContent = `${dates.length} favorites`;
+
+        const tooltip = document.getElementById("tooltip");
+        let activeCell = null;
+        calendar.addEventListener("mouseover", (event) => {
+          const target = event.target.closest(".cell");
+          if (!target || !target.dataset.date) {
+            tooltip.classList.remove("visible");
+            if (activeCell) {
+              activeCell.classList.remove("hovered");
+              activeCell = null;
+            }
+            return;
+          }
+          if (activeCell && activeCell !== target) {
+            activeCell.classList.remove("hovered");
+          }
+          activeCell = target;
+          activeCell.classList.add("hovered");
+          tooltip.textContent = target.dataset.date;
+          tooltip.classList.add("visible");
+        });
+
+        calendar.addEventListener("mousemove", (event) => {
+          if (!tooltip.classList.contains("visible")) {
+            return;
+          }
+          tooltip.style.left = `${event.clientX}px`;
+          tooltip.style.top = `${event.clientY}px`;
+        });
+
+        calendar.addEventListener("mouseleave", () => {
+          tooltip.classList.remove("visible");
+          if (activeCell) {
+            activeCell.classList.remove("hovered");
+            activeCell = null;
+          }
+        });
       }
 
       fetch("fav_dates.csv")
