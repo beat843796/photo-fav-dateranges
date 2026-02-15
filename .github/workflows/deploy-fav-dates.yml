@@ -1,56 +1,34 @@
-name: Deploy fav_dates.csv
+name: Deploy fav_dates.csv to Hetzner
 
 on:
   workflow_dispatch:
 
 jobs:
-  upload:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Write SSH key
+      - name: Write SSH key to temporary file
+        shell: bash
         run: |
-          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
-          mkdir -p "$GH_HOME_DIR/.ssh"
-          printf '%s' "${{ secrets.SFTP_PRIVATE_KEY }}" > "$GH_HOME_DIR/.ssh/deploy_key"
-          chmod 644 "$GH_HOME_DIR/.ssh/deploy_key"
+          KEY_FILE="$RUNNER_TEMP/id_ed25519"
+          echo "${{ secrets.SFTP_PRIVATE_KEY }}" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          echo "KEY_FILE=$KEY_FILE" >> "$GITHUB_ENV"
 
-      - name: Debug connection inputs
+      - name: Prepare known_hosts
         run: |
-          echo "Host: ${{ secrets.SFTP_HOST }}"
-          echo "User: ${{ secrets.SFTP_USER }}"
-          echo "User: ${{ secrets.SFTP_PRIVATE_KEY }}"
-          echo "Port: 22"
+          KNOWN_HOSTS="$RUNNER_TEMP/known_hosts"
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> "$KNOWN_HOSTS"
+          echo "KNOWN_HOSTS=$KNOWN_HOSTS" >> "$GITHUB_ENV"
 
-      - name: Debug deploy key fingerprint
+      - name: Copy file via SCP
         run: |
-          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
-          ssh-keygen -lf "$GH_HOME_DIR/.ssh/deploy_key"
-
-      - name: Test SFTP auth from runner
-        env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_USER: ${{ secrets.SFTP_USER }}
-        run: |
-          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
-          sftp -oBatchMode=yes -oStrictHostKeyChecking=accept-new -i "$GH_HOME_DIR/.ssh/deploy_key" -P 22 "$SFTP_USER@$SFTP_HOST" << 'EOF'
-          pwd
-          ls
-          bye
-          EOF
-
-      - name: Upload fav_dates.csv via SFTP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          port: 22
-          key_path: /github/home/.ssh/deploy_key
-          source: "fav_dates.csv"
-          target: "public_html/photofavs/"
-          overwrite: true
-          debug: true
-          # If you set known_hosts, enable this:
-          # fingerprint: ${{ secrets.SFTP_FINGERPRINT }}
+          scp -i "$KEY_FILE" \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$KNOWN_HOSTS" \
+              fav_dates.csv \
+              "${{ secrets.SFTP_USERNAME }}@${{ secrets.SFTP_HOST }}:public_html/photofavs/"
