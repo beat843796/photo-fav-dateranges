@@ -12,9 +12,10 @@ jobs:
 
       - name: Write SSH key
         run: |
-          mkdir -p "$GITHUB_HOME/.ssh"
-          printf '%s' "${{ secrets.SFTP_PRIVATE_KEY }}" > "$GITHUB_HOME/.ssh/deploy_key"
-          chmod 600 "$GITHUB_HOME/.ssh/deploy_key"
+          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
+          mkdir -p "$GH_HOME_DIR/.ssh"
+          printf '%s' "${{ secrets.SFTP_PRIVATE_KEY }}" > "$GH_HOME_DIR/.ssh/deploy_key"
+          chmod 600 "$GH_HOME_DIR/.ssh/deploy_key"
 
       - name: Upload fav_dates.csv via SFTP
         uses: appleboy/scp-action@v0.1.7
