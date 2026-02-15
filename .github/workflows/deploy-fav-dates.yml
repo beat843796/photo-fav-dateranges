@@ -1,10 +1,7 @@
 name: Deploy fav_dates.csv
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "fav_dates.csv"
+  workflow_dispatch:
 
 jobs:
   upload:
