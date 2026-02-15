@@ -22,7 +22,7 @@ jobs:
       - name: Prepare known_hosts
         run: |
           KNOWN_HOSTS="$RUNNER_TEMP/known_hosts"
-          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> "$KNOWN_HOSTS"
+          ssh-keyscan -H "${{ secrets.SFTP_HOST }}" >> "$KNOWN_HOSTS"
           echo "KNOWN_HOSTS=$KNOWN_HOSTS" >> "$GITHUB_ENV"
 
       - name: Copy file via SCP
