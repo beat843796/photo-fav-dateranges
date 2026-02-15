@@ -10,15 +10,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SFTP_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
       - name: Upload fav_dates.csv via SFTP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           port: 22
-          key: ${{ secrets.SFTP_PRIVATE_KEY }}
+          key_path: /github/home/.ssh/deploy_key
           source: "fav_dates.csv"
           target: "public_html/photofavs/"
           overwrite: true
+          debug: true
           # If you set known_hosts, enable this:
           # fingerprint: ${{ secrets.SFTP_FINGERPRINT }}
