@@ -1,7 +1,9 @@
 name: Deploy fav_dates.csv to Hetzner
 
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - fav_dates.csv
 
 jobs:
   deploy:
