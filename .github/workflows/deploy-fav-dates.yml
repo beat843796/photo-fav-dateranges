@@ -19,6 +19,7 @@ jobs:
           host: ${{ secrets.SFTP_HOST }}
           username: ${{ secrets.SFTP_USER }}
           port: 22
+          password: ${{ secrets.SFTP_PASSWORD }}
           source: "fav_dates.csv"
           target: "public_html/photofavs/"
           overwrite: true
