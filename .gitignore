@@ -1,1 +1,4 @@
 db_copy/
+.venv/
+__pycache__/
+*.pyc
