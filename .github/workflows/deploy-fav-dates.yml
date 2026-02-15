@@ -17,6 +17,30 @@ jobs:
           printf '%s' "${{ secrets.SFTP_PRIVATE_KEY }}" > "$GH_HOME_DIR/.ssh/deploy_key"
           chmod 644 "$GH_HOME_DIR/.ssh/deploy_key"
 
+      - name: Debug connection inputs
+        run: |
+          echo "Host: ${{ secrets.SFTP_HOST }}"
+          echo "User: ${{ secrets.SFTP_USER }}"
+          echo "User: ${{ secrets.SFTP_PRIVATE_KEY }}"
+          echo "Port: 22"
+
+      - name: Debug deploy key fingerprint
+        run: |
+          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
+          ssh-keygen -lf "$GH_HOME_DIR/.ssh/deploy_key"
+
+      - name: Test SFTP auth from runner
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+        run: |
+          GH_HOME_DIR="$RUNNER_TEMP/_github_home"
+          sftp -oBatchMode=yes -oStrictHostKeyChecking=accept-new -i "$GH_HOME_DIR/.ssh/deploy_key" -P 22 "$SFTP_USER@$SFTP_HOST" << 'EOF'
+          pwd
+          ls
+          bye
+          EOF
+
       - name: Upload fav_dates.csv via SFTP
         uses: appleboy/scp-action@v0.1.7
         with:
